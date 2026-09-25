@@ -8,6 +8,18 @@ from shared.schemas import ProductMatch, SearchResultItem, SearchResponse, Revie
 
 app = FastAPI(title="Shopper Helper API")
 
+@app.get("/health/live")
+async def health_live():
+    return {"status": "alive"}
+
+@app.get("/health/ready")
+async def health_ready(db:AsyncSession = Depends(get_async_db)):
+    try:
+        await db.execute(text("SELECT 1"))
+    except Exception:
+        raise HTTPException(status_code=503, detail="Database not reachable")
+    return {"status": "ready"}
+
 async def get_latest_price(db: AsyncSession, product_id: int) -> PriceSnapshot | None:
     stmt = (
         select(PriceSnapshot)
