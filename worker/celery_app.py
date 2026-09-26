@@ -21,6 +21,6 @@ celery_app.conf.update(
 celery_app.conf.beat_schedule = {
     "refresh-all-prices-daily": {
         "task": "refresh_all_prices",
-        "schedule": 60.0
+        "schedule": crontab(hour=3, minute=0),
     },
 }
