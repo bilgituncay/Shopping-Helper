@@ -50,6 +50,41 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+  worker:
+    build:
+      context:  .
+      dockerfile: worker/Dockerfile
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: shopping_helper
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  beat:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: shopping_helper
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["celery", "-A", "worker.celery_app", "beat", "--loglevel=info"]
 
 volumes:
   postgres_data:

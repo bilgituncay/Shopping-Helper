@@ -1,5 +1,4 @@
-# Stage 1: Builder
-
+# Stage 1: builder
 FROM python:3.10-slim AS builder
 
 WORKDIR /app
@@ -7,8 +6,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Stage 2: Runtime image
-
+# Stage 2: final runtime image
 FROM python:3.10-slim
 
 RUN groupadd --gid 1000 appgroup && \
@@ -19,7 +17,7 @@ WORKDIR /app
 COPY --from=builder /root/.local /home/appuser/.local
 
 COPY shared/ ./shared/
-COPY api/ ./api/
+COPY worker/ ./worker/
 
 RUN chown -R appuser:appgroup /app /home/appuser/.local
 
@@ -27,6 +25,4 @@ ENV PATH=/home/appuser/.local/bin:$PATH
 
 USER appuser
 
-EXPOSE 8000
-
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["celery", "-A", "worker.celery_app", "worker", "--loglevel=info"]

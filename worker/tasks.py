@@ -1,5 +1,7 @@
 import random
 from datetime import datetime
+from celery import Celery
+from sqlalchemy import select
 
 from worker.celery_app import celery_app
 from shared.database import SyncSessionLocal
@@ -39,3 +41,16 @@ def refresh_price(product_id: int) -> dict:
         return {"status": "ok", "product_id": product_id, "new_price": new_price}
     finally:
         db.close()
+
+@celery_app.task(name="refresh_all_prices")
+def refresh_all_prices() -> dict:
+    db = SyncSessionLocal()
+    try:
+        product_ids = [pid for (pid,) in db.query(Product.id).all()]
+    finally:
+        db.close()
+
+    for pid in product_ids:
+        refresh_price.delay(product_id=pid)
+
+    return {"status": "ok", "enqueued": len(product_ids)}

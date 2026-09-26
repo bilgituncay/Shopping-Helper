@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from shared.config import settings
 
@@ -16,3 +17,10 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
 )
+
+celery_app.conf.beat_schedule = {
+    "refresh-all-prices-daily": {
+        "task": "refresh_all_prices",
+        "schedule": 60.0
+    },
+}
