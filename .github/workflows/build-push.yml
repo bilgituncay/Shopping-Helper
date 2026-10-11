@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@4
 
       - name: Set image tag
-        rub: echo "TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+        run: echo "TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
 
       - name: Assume AWS role
         uses: aws-actions/configure-aws-credentials@v4
