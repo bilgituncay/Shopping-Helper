@@ -1,0 +1,46 @@
+name: build-and-push
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  REGISTRY: 341587306056.dkr.ecr.eu-west-3.amazonaws.com
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@4
+
+      - name: Set image tag
+        rub: echo "TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Assume AWS role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::341587306056:role/github-actions-shopper-ecr
+          aws-region: eu-west-3
+
+      - name: Log in to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build images
+        run: |
+          docker build -f api/Dockerfile -t $REGISTRY/shopper-api:$TAG .
+          docker build -f worker/Dockerfile -t $REGISTRY/shopper-worker:$TAG .
+
+      - name: Smoke test
+        run: |
+          docker run --rm $REGISTRY/shopper-api:$TAG python -c "import api.main"
+          docker run --rm $REGISTRY/shopper-worker:$TAG python -c "import worker.tasks"
+
+      - name: Push images
+        run: |
+          docker push $REGISTRY/shopper-api:$TAG
+          docker push $REGISTRY/shopper-worker:$TAG
