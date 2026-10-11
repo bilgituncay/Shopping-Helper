@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopper-config
+data:
+  POSTGRES_USER: "appuser"
+  POSTGRES_DB: "shopping_helper"
+  POSTGRES_HOST: "shopper-db.cfauq0kewfx7.eu-west-3.rds.amazonaws.com"
+  POSTGRES_PORT: "5432"
+  REDIS_HOST: "shopper-redis.tsd56k.ng.0001.euw3.cache.amazonaws.com"
+  REDIS_PORT: "6379"

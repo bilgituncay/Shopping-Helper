@@ -20,6 +20,7 @@ COPY --from=builder /root/.local /home/appuser/.local
 
 COPY shared/ ./shared/
 COPY api/ ./api/
+COPY scripts/__init__.py scripts/init_db.py scripts/seed_test_data.py ./scripts/
 
 RUN chown -R appuser:appgroup /app /home/appuser/.local
 

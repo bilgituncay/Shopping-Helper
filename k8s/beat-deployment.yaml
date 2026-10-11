@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopper-beat
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: shopper-beat
+  template:
+    metadata:
+      labels:
+        app: shopper-beat
+    spec:
+      imagePullSecrets:
+        - name: ecr-pull
+      containers:
+        - name: beat
+          image: 341587306056.dkr.ecr.eu-west-3.amazonaws.com/shopper-worker:v2
+          command: ["celery", "-A", "worker.celery_app", "beat", "--loglevel=info"]
+          envFrom:
+            - configMapRef:
+                name: shopper-config
+            - secretRef:
+                name: shopper-secret

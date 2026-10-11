@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopper-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shopper-worker
+  template:
+    metadata:
+      labels:
+      app: shopper-worker
+    spec:
+      imagePullSecrets:
+        - name: ecr-pull
+      containers:
+        - name: worker
+          image: 341587306056.dkr.ecr.eu-west-3.amazonaws.com/shopper-worker:v2
+          envFrom:
+            - configMapRef:
+                name: shopper-config
+            - secretRef:
+                name: shopper-secret
