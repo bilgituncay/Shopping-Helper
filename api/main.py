@@ -99,9 +99,13 @@ async def match_products(
     rows = result.all()
     return [row[0] for row in rows]
 
+def round_or_none(value: float | None, digits: int = 2) -> float | None:
+    return None if value is None else round(value, digits)
+
 @app.get("/search", response_model=SearchResponse)
 async def search(
     product_id: int,
+    price: float | None = Query(default=None, gt=0),
     price_range: float = 5.0,
     limit: int = Query(default=20, le=100),
     offset: int = 0,
@@ -112,8 +116,16 @@ async def search(
         raise HTTPException(status_code=404, detail="Product not found")
     
     baseline_price = await get_latest_price(db, product_id)
-    if baseline_price is None:
-        raise HTTPException(status_code=404, detail="No price data for this product yet.")
+    typed_price = price is not None
+    if not typed_price and baseline_price is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No price data for thos product yet. Pass ?price= with the in-store price.",
+        )
+
+    reference_price = price if typed_price else baseline_price.price
+    price_min = max(reference_price - price_range, 0)
+    price_max = reference_price + price_range
     
     baseline_avg_rating, baseline_review_count = await get_rating_summary(db, product_id)
     baseline_reviews = await get_reviews(db, product_id)
@@ -122,23 +134,20 @@ async def search(
         product_id=baseline_product.id,
         name=baseline_product.name,
         category=baseline_product.category,
-        price=baseline_price.price,
-        retailer=baseline_price.retailer,
-        scraped_at=baseline_price.scraped_at,
-        avg_rating=baseline_avg_rating,
-        rating_diff=0.0,
+        price=reference_price,
+        retailer=None if typed_price else baseline_price.retailer,
+        scraped_at=None if typed_price else baseline_price.scraped_at,
+        avg_rating=round_or_none(baseline_avg_rating),
+        rating_diff=0.0 if baseline_avg_rating is not None else None,
         source_count=baseline_review_count,
+        critic_scored=baseline_review_count>0,
         reviews=[ReviewOut.model_validate(r) for r in baseline_reviews],
     )
-
-    price_min = baseline_price.price - price_range
-    price_max = baseline_price.price + price_range
 
     candidate_prices = await get_latest_prices_in_range(
         db, baseline_product.category, price_min, price_max, exclude_id=product_id
     )
-    print("DEBUG candidate_prices:", {pid: s.price for pid, s in candidate_prices.items()})
-
+    
     candidate_ids = list(candidate_prices.keys())
     candidates_stmt = select(Product).where(Product.id.in_(candidate_ids))
     candidates_result = await db.execute(candidates_stmt)
@@ -155,7 +164,7 @@ async def search(
         avg_rating, review_count = rating_summaries.get(pid, (None, 0))
         reviews = reviews_by_product.get(pid, [])
         rating_diff = (
-            avg_rating - baseline_avg_rating
+            round(avg_rating - baseline_avg_rating, 2)
             if avg_rating is not None and baseline_avg_rating is not None
             else None
         )
@@ -167,9 +176,10 @@ async def search(
                 price=snapshot.price,
                 retailer=snapshot.retailer,
                 scraped_at=snapshot.scraped_at,
-                avg_rating=avg_rating,
+                avg_rating=round_or_none(avg_rating),
                 rating_diff=rating_diff,
                 source_count=review_count,
+                critic_scored=review_count > 0,
                 reviews=[ReviewOut.model_validate(r) for r in reviews],
             )
         )
@@ -183,6 +193,9 @@ async def search(
 
     return SearchResponse(
         baseline=baseline_item,
+        reference_price=reference_price,
+        price_min=round(price_min, 2),
+        price_max=round(price_max, 2),
         results=paginated,
         limit=limit,
         offset=offset,

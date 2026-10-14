@@ -28,10 +28,14 @@ class SearchResultItem(BaseModel):
     avg_rating: float | None
     rating_diff: float | None
     source_count: int
+    critic_scored: bool
     reviews: list[ReviewOut]
 
 class SearchResponse(BaseModel):
     baseline: SearchResultItem
+    reference_price : float
+    price_min : float
+    price_max : float
     results: list[SearchResultItem]
     limit: int
     offset: int

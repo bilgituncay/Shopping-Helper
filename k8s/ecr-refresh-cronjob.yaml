@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ecr-refresh
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          serviceAccountName: ecr-refresher
+          restartPolicy: Never
+          containers:
+            - name: refresh
+              image: alpine/k8s:1.36.5
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -e
+                  TOKEN=$(aws ecr get-login-password --region eu-west-3)
+                  kubectl create secret docker-registry ecr-pull \
+                    --docker-server=341587306056.dkr.ecr.eu-west-3.amazonaws.com \
+                    --docker-username=AWS \
+                    --docker-password="$TOKEN" \
+                    --dry-run=client -o yaml | kubectl apply -f -
